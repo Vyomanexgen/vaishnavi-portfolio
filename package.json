@@ -1,0 +1,22 @@
+{
+  "name": "lakshmi-vaishnavi-portfolio",
+  "version": "1.0.0",
+  "description": "AI-Powered Personal Portfolio with Interactive Female AI Avatar for Lakshmi Vaishnavi Paritala",
+  "type": "module",
+  "scripts": {
+    "start": "python -m http.server 3000",
+    "serve": "python -m http.server 3000",
+    "backend": "python backend/app.py"
+  },
+  "keywords": [
+    "portfolio",
+    "ai-avatar",
+    "female-avatar",
+    "voice-synthesis",
+    "react",
+    "python",
+    "fastapi"
+  ],
+  "author": "Lakshmi Vaishnavi Paritala",
+  "license": "MIT"
+}
