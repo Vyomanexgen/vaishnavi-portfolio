@@ -1,18 +1,21 @@
 """
-VAISHNAVI AI - SECURE BACKEND SERVICE (FastAPI)
-Provides secure server-side LLM conversational intelligence and ElevenLabs TTS proxy.
-Keeps API credentials protected outside the browser.
+VAISHNAVI AI - SECURE BACKEND SERVICE & FULL-STACK STATIC SERVER (FastAPI)
+Provides secure server-side LLM conversational intelligence, ElevenLabs TTS proxy,
+and full-stack frontend serving for Lakshmi Vaishnavi Paritala's AI-Powered Portfolio.
 """
 
 import os
 from pathlib import Path
-import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel
 from typing import List, Optional
+
+try:
+    import httpx
+except ImportError:
+    httpx = None
 
 # Load optional .env if python-dotenv installed
 try:
@@ -21,9 +24,30 @@ try:
 except ImportError:
     pass
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-INDEX_FILE = BASE_DIR / "index.html"
-SRC_DIR = BASE_DIR / "src"
+# Dynamically resolve paths across both local and Vercel serverless environments
+CURRENT_DIR = Path(__file__).resolve().parent
+PARENT_DIR = CURRENT_DIR.parent
+CANDIDATE_DIRS = [
+    CURRENT_DIR,
+    PARENT_DIR,
+    Path.cwd(),
+    Path("/var/task"),
+    Path("/var/task/backend")
+]
+
+def find_file(relative_name: str) -> Optional[Path]:
+    for d in CANDIDATE_DIRS:
+        p = d / relative_name
+        if p.is_file():
+            return p
+    return None
+
+def find_dir(relative_name: str) -> Optional[Path]:
+    for d in CANDIDATE_DIRS:
+        p = d / relative_name
+        if p.is_dir():
+            return p
+    return None
 
 app = FastAPI(
     title="Vaishnavi AI Avatar Backend",
@@ -39,10 +63,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Mount static src directory for browser scripts
-if SRC_DIR.exists():
-    app.mount("/src", StaticFiles(directory=str(SRC_DIR)), name="src")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
@@ -112,6 +132,69 @@ class ChatRequest(BaseModel):
 class TTSRequest(BaseModel):
     text: str
     voice_id: Optional[str] = None
+
+# =============================================================
+# FRONTEND PAGES & ASSETS (SERVES PORTFOLIO SITE RELIABLY)
+# =============================================================
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/index.html", response_class=HTMLResponse)
+async def serve_index():
+    """Serves the master portfolio HTML frontend"""
+    index_file = find_file("index.html")
+    if index_file and index_file.exists():
+        content = index_file.read_text(encoding="utf-8")
+        return HTMLResponse(content=content, status_code=200)
+
+    return HTMLResponse(
+        content="""<!DOCTYPE html><html><head><title>Lakshmi Vaishnavi Portfolio</title></head>
+        <body style="font-family:sans-serif;text-align:center;padding:50px;">
+        <h2>Lakshmi Vaishnavi Portfolio</h2>
+        <p>Loading portfolio assets...</p></body></html>""",
+        status_code=200
+    )
+
+@app.get("/src/{filepath:path}")
+async def serve_src_files(filepath: str):
+    """Serves JavaScript modules with proper MIME type across local and serverless hosts"""
+    for d in CANDIDATE_DIRS:
+        candidate = d / "src" / filepath
+        if candidate.is_file():
+            content = candidate.read_bytes()
+            media = "application/javascript" if filepath.endswith(".js") else "text/plain"
+            return Response(content=content, media_type=media)
+    raise HTTPException(status_code=404, detail=f"Script src/{filepath} not found")
+
+@app.get("/vaishnavi_photo.jpg")
+@app.get("/vaishnavi_avatar.jpg")
+@app.get("/reference_design.jpg")
+async def serve_images(request: Request):
+    """Serves project portraits and images directly without streaming issues"""
+    filename = request.url.path.lstrip("/")
+    img_file = find_file(filename)
+    if img_file and img_file.exists():
+        return Response(content=img_file.read_bytes(), media_type="image/jpeg")
+    raise HTTPException(status_code=404, detail=f"Image {filename} not found")
+
+@app.get("/favicon.ico")
+async def favicon():
+    return Response(status_code=204)
+
+# =============================================================
+# API ENDPOINTS
+# =============================================================
+
+@app.get("/api")
+@app.get("/api/")
+async def api_info():
+    return {
+        "status": "online",
+        "service": "Vaishnavi AI Backend API",
+        "portfolio_owner": "Lakshmi Vaishnavi Paritala",
+        "docs": "/docs",
+        "health": "/api/health",
+        "endpoints": ["/api/health", "/api/chat", "/api/tts"]
+    }
 
 @app.get("/api/health")
 def health():
@@ -222,68 +305,13 @@ async def text_to_speech(req: TTSRequest):
             raise HTTPException(status_code=res.status_code, detail="ElevenLabs error")
         return {"audio_base64": res.content.hex()}
 
-# -------------------------------------------------------------
-# STATIC FRONTEND SERVING & SPA ROUTING (FIXES 404 "NOT FOUND")
-# -------------------------------------------------------------
-
-@app.get("/")
-@app.get("/index.html")
-async def serve_index():
-    """Serves the portfolio frontend website at root URL http://localhost:8000/"""
-    if INDEX_FILE.exists():
-        return FileResponse(str(INDEX_FILE))
-    return JSONResponse({
-        "status": "online",
-        "service": "Vaishnavi AI Avatar Backend",
-        "portfolio_owner": "Lakshmi Vaishnavi Paritala",
-        "docs": "/docs",
-        "health": "/api/health"
-    })
-
-@app.get("/api")
-@app.get("/api/")
-async def api_info():
-    """Returns interactive API discovery info"""
-    return {
-        "status": "online",
-        "service": "Vaishnavi AI Backend API",
-        "docs": "/docs",
-        "health": "/api/health",
-        "endpoints": ["/api/health", "/api/chat", "/api/tts"]
-    }
-
-@app.get("/vaishnavi_photo.jpg")
-async def serve_photo():
-    photo = BASE_DIR / "vaishnavi_photo.jpg"
-    if photo.exists():
-        return FileResponse(str(photo), media_type="image/jpeg")
-    raise HTTPException(status_code=404, detail="Photo not found")
-
-@app.get("/vaishnavi_avatar.jpg")
-async def serve_avatar():
-    avatar = BASE_DIR / "vaishnavi_avatar.jpg"
-    if avatar.exists():
-        return FileResponse(str(avatar), media_type="image/jpeg")
-    raise HTTPException(status_code=404, detail="Avatar not found")
-
-@app.get("/reference_design.jpg")
-async def serve_ref():
-    ref = BASE_DIR / "reference_design.jpg"
-    if ref.exists():
-        return FileResponse(str(ref), media_type="image/jpeg")
-    raise HTTPException(status_code=404, detail="Reference design not found")
-
-@app.get("/favicon.ico")
-async def favicon():
-    return Response(status_code=204)
+# =============================================================
+# SPA 404 FALLBACK
+# =============================================================
 
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, exc: HTTPException):
-    """
-    Prevents the generic '{"detail": "Not Found"}' error.
-    Gracefully serves index.html for SPA routes or static project assets.
-    """
-    # For actual API routes that don't exist, return descriptive JSON
+    # API endpoints report clean JSON error
     if request.url.path.startswith("/api/"):
         return JSONResponse(
             status_code=404,
@@ -295,17 +323,20 @@ async def custom_404_handler(request: Request, exc: HTTPException):
             }
         )
 
-    # Check if a matching static file exists in project root
-    clean_path = request.url.path.lstrip("/")
-    target_file = BASE_DIR / clean_path
-    if target_file.is_file() and BASE_DIR in target_file.resolve().parents:
-        return FileResponse(str(target_file))
+    # Static assets
+    filename = request.url.path.lstrip("/")
+    f = find_file(filename)
+    if f and f.exists():
+        ext = f.suffix.lower()
+        media = "image/jpeg" if ext in [".jpg", ".jpeg"] else "application/javascript" if ext == ".js" else "text/html"
+        return Response(content=f.read_bytes(), media_type=media)
 
     # SPA Fallback: serve index.html
-    if INDEX_FILE.exists():
-        return FileResponse(str(INDEX_FILE))
+    index_file = find_file("index.html")
+    if index_file and index_file.exists():
+        return HTMLResponse(content=index_file.read_text(encoding="utf-8"), status_code=200)
 
-    return JSONResponse(status_code=404, content={"detail": "Page not found"})
+    return HTMLResponse(content="<h1>Lakshmi Vaishnavi Portfolio</h1>", status_code=200)
 
 if __name__ == "__main__":
     import uvicorn
