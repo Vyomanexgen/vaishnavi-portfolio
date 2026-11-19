@@ -23,7 +23,7 @@ Directly inspired by high-end luxury portfolio aesthetics:
   - Charcoal Typography: `#242424`
   - Accent Soft Blue: `#5D83F5`
   - Muted Grey: `#777777`
-- **Architectural Arch Layout**: An arched portrait area on the left with an organic rounded bottom, housing the photorealistic avatar with live breathing, blinking, and audio-reactive lip synchronization.
+- **Architectural Arch Layout**: An arched portrait area on the left with an organic rounded bottom, housing Vaishnavi's authentic portrait with smooth breathing micro-motion and voice-synchronized audio aura indicators.
 - **Serif & Sans Typography**: Elegant serif headings (*Playfair Display*) paired with clean modern sans-serif body (*Plus Jakarta Sans*).
 - **Stat Metric Strip**: Highlighting her university, 4 projects, Skill Parivar Hackathon, Intermediate MPC score (92.7%), and industry certifications.
 
@@ -31,15 +31,12 @@ Directly inspired by high-end luxury portfolio aesthetics:
 
 ## 🤖 The Female AI Avatar ("Vaishnavi AI")
 
-### 1. Visual & Animation Engine (`src/avatar-animator.js`)
-- **Photorealistic Digital Human**: Realistic young adult Indian female portrait in a chic pastel pink tailored blazer with natural skin texture, warm friendly smile, and expressive brown eyes.
-- **Natural Micro-Kinematics**:
-  - **Breathing**: Continuous sinusoidal vertical scale and chest cadence at ~0.26 Hz.
-  - **Organic Blinking**: Randomized blink intervals (every 3–5 seconds) with realistic quadratic eyelid closure and lash feathering.
-  - **Posture Sway**: Subtle micro-head stabilization mimicking human presence.
-- **Real-Time Lip Synchronization**:
-  - Dynamic mouth opening, height modulation, oral cavity shading, and dental line rendering driven directly by spoken audio frequency and syllabic energy.
-  - Smooth spring interpolation (60 FPS) ensures movements are natural and organic.
+### 1. Visual & Presentation Engine (`src/avatar-animator.js`)
+- **Authentic Portrait Presentation**: Uses Lakshmi Vaishnavi's real photograph with clean, artifact-free high-definition portrait rendering.
+- **Natural Subtle Kinematics**:
+  - **Breathing Presence**: Continuous gentle sinusoidal vertical micro-motion at natural human cadence (~0.26 Hz).
+  - **Speech Reactive Audio Aura**: Elegant glowing soft-pink and soft-blue audio rings indicating live voice output.
+  - **Clean Aesthetic**: Distortion-free presentation without artificial mouth overlays.
 
 ### 2. Female Voice Synthesis & Speech Recognition (`src/voice-engine.js`)
 - **Natural Female Voice**: Prioritizes Indian English neural female voices (e.g., `en-IN` Google / Microsoft Heera / Neerja) with automatic fallback to natural female voices.
@@ -144,13 +141,17 @@ The backend starts at `http://localhost:8000`.
 
 ---
 
-## 🌐 Deployment Instructions
+## 🌐 Live Deployment & Links
 
-### Deploy to GitHub Pages
-1. Push this repository to `https://github.com/vaishnaviparitala/portfolio`.
-2. Go to **Settings > Pages**.
-3. Under **Branch**, select `main` / `root` and click **Save**.
-4. Your portfolio will be live at `https://vaishnaviparitala.github.io/portfolio`.
+- **GitHub Repository**: [https://github.com/Vyomanexgen/vaishnavi-portfolio](https://github.com/Vyomanexgen/vaishnavi-portfolio)
+- **Live Vercel Preview**: [https://nimble-prairie-wt7u4ky.tmp.now](https://nimble-prairie-wt7u4ky.tmp.now)
+- **Claim Vercel Deployment to Account**: [Claim on Vercel](https://vercel.com/claim-deployment?code=d62c065c-9e98-456d-9acd-4f00ac24cc3e)
+
+### Continuous Deployment via Vercel:
+1. Log in to [Vercel](https://vercel.com).
+2. Click **Add New > Project**.
+3. Import the GitHub repository `Vyomanexgen/vaishnavi-portfolio`.
+4. Click **Deploy**. Vercel will automatically build and deploy new commits pushed to `main`.
 
 ---
 
