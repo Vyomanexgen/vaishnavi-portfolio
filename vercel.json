@@ -1,6 +1,7 @@
 {
-  "version": 2,
-  "name": "vaishnavi-portfolio",
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/((?!src/|.*\\..*).*)", "destination": "/index.html" }
+  ]
 }

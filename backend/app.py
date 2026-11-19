@@ -5,9 +5,12 @@ Keeps API credentials protected outside the browser.
 """
 
 import os
+from pathlib import Path
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 
@@ -18,10 +21,14 @@ try:
 except ImportError:
     pass
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+INDEX_FILE = BASE_DIR / "index.html"
+SRC_DIR = BASE_DIR / "src"
+
 app = FastAPI(
     title="Vaishnavi AI Avatar Backend",
     version="1.0.0",
-    description="Conversational intelligence and secure voice proxy for Lakshmi Vaishnavi's portfolio"
+    description="Conversational intelligence, full-stack static server, and secure voice proxy for Lakshmi Vaishnavi's portfolio"
 )
 
 # Enable CORS for local and hosted frontends
@@ -32,6 +39,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static src directory for browser scripts
+if SRC_DIR.exists():
+    app.mount("/src", StaticFiles(directory=str(SRC_DIR)), name="src")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
@@ -210,6 +221,91 @@ async def text_to_speech(req: TTSRequest):
         if res.status_code != 200:
             raise HTTPException(status_code=res.status_code, detail="ElevenLabs error")
         return {"audio_base64": res.content.hex()}
+
+# -------------------------------------------------------------
+# STATIC FRONTEND SERVING & SPA ROUTING (FIXES 404 "NOT FOUND")
+# -------------------------------------------------------------
+
+@app.get("/")
+@app.get("/index.html")
+async def serve_index():
+    """Serves the portfolio frontend website at root URL http://localhost:8000/"""
+    if INDEX_FILE.exists():
+        return FileResponse(str(INDEX_FILE))
+    return JSONResponse({
+        "status": "online",
+        "service": "Vaishnavi AI Avatar Backend",
+        "portfolio_owner": "Lakshmi Vaishnavi Paritala",
+        "docs": "/docs",
+        "health": "/api/health"
+    })
+
+@app.get("/api")
+@app.get("/api/")
+async def api_info():
+    """Returns interactive API discovery info"""
+    return {
+        "status": "online",
+        "service": "Vaishnavi AI Backend API",
+        "docs": "/docs",
+        "health": "/api/health",
+        "endpoints": ["/api/health", "/api/chat", "/api/tts"]
+    }
+
+@app.get("/vaishnavi_photo.jpg")
+async def serve_photo():
+    photo = BASE_DIR / "vaishnavi_photo.jpg"
+    if photo.exists():
+        return FileResponse(str(photo), media_type="image/jpeg")
+    raise HTTPException(status_code=404, detail="Photo not found")
+
+@app.get("/vaishnavi_avatar.jpg")
+async def serve_avatar():
+    avatar = BASE_DIR / "vaishnavi_avatar.jpg"
+    if avatar.exists():
+        return FileResponse(str(avatar), media_type="image/jpeg")
+    raise HTTPException(status_code=404, detail="Avatar not found")
+
+@app.get("/reference_design.jpg")
+async def serve_ref():
+    ref = BASE_DIR / "reference_design.jpg"
+    if ref.exists():
+        return FileResponse(str(ref), media_type="image/jpeg")
+    raise HTTPException(status_code=404, detail="Reference design not found")
+
+@app.get("/favicon.ico")
+async def favicon():
+    return Response(status_code=204)
+
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc: HTTPException):
+    """
+    Prevents the generic '{"detail": "Not Found"}' error.
+    Gracefully serves index.html for SPA routes or static project assets.
+    """
+    # For actual API routes that don't exist, return descriptive JSON
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": "API route not found",
+                "detail": f"Endpoint '{request.url.path}' does not exist.",
+                "available_endpoints": ["/api/health", "/api/chat", "/api/tts"],
+                "interactive_docs": "/docs"
+            }
+        )
+
+    # Check if a matching static file exists in project root
+    clean_path = request.url.path.lstrip("/")
+    target_file = BASE_DIR / clean_path
+    if target_file.is_file() and BASE_DIR in target_file.resolve().parents:
+        return FileResponse(str(target_file))
+
+    # SPA Fallback: serve index.html
+    if INDEX_FILE.exists():
+        return FileResponse(str(INDEX_FILE))
+
+    return JSONResponse(status_code=404, content={"detail": "Page not found"})
 
 if __name__ == "__main__":
     import uvicorn
